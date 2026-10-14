@@ -14,40 +14,8 @@ jobs:
     steps:
       - name: Checkout Dashboard code
         uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-      - name: Install package and build
-        run: |
-          bun install --frozen-lockfile
-          bun run build
-      - name: Deploy
-        uses: crazy-max/ghaction-github-pages@v2
-        with:
-          target_branch: gh-pages
-          build_dir: public
-          fqdn: meta.zwrt.de
-          git_config_name: GitHub Actions
-          git_config_email: actions@github.com
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Checkout gh-pages branch
-        uses: actions/checkout@v3
-        with:
-          ref: gh-pages
-          path: gh-pages-content
-      
-      - name: Create gh-pages.zip with top-level directory
-        run: |
-          mkdir -p temp/gh-pages
-          cp -r gh-pages-content/* temp/gh-pages/
-          cd temp
-          zip -r ../gh-pages.zip . -x "*/.git*"
-          ls -la ../gh-pages.zip
-      
-      - name: Create new Release with gh-pages.zip (auto-increment version)
+
+      - name: Compute next version and sync package.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -65,8 +33,51 @@ jobs:
               NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
             fi
           fi
-          echo "new_tag=$NEW_TAG"
+          VER=$(echo "$NEW_TAG" | sed 's/^v//')
           echo "new_tag=$NEW_TAG" >> "$GITHUB_ENV"
+          echo "计算得到新版本 tag: $NEW_TAG, 同步 package.json version=$VER"
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/" package.json
+          grep '"version"' package.json
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install package and build
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Deploy
+        uses: crazy-max/ghaction-github-pages@v2
+        with:
+          target_branch: gh-pages
+          build_dir: public
+          fqdn: meta.zwrt.de
+          git_config_name: GitHub Actions
+          git_config_email: actions@github.com
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: gh-pages-content
+
+      - name: Create gh-pages.zip with top-level directory
+        run: |
+          mkdir -p temp/gh-pages
+          cp -r gh-pages-content/* temp/gh-pages/
+          cd temp
+          zip -r ../gh-pages.zip . -x "*/.git*"
+          ls -la ../gh-pages.zip
+
+      - name: Create new Release with gh-pages.zip (auto-increment version)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           gh release create "$NEW_TAG" gh-pages.zip \
             --repo "$GITHUB_REPOSITORY" \
             --title "$NEW_TAG" \
