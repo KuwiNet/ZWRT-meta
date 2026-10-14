@@ -51,7 +51,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 从现有 Releases 取最高 vX.Y.Z 递增 patch, 每次 push 创建新版本
+          # 语义化版本递增: patch 到 9 后进位 (v1.8.9 -> v1.9.0), 否则 patch+1
           LATEST=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 2>/dev/null | awk '{print $1}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
           if [ -z "$LATEST" ]; then
             NEW_TAG="v1.0.0"
@@ -59,7 +59,11 @@ jobs:
             MAJOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f1)
             MINOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f2)
             PATCH=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f3)
-            NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+            if [ "$PATCH" -ge 9 ]; then
+              NEW_TAG="v${MAJOR}.$((MINOR + 1)).0"
+            else
+              NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+            fi
           fi
           echo "new_tag=$NEW_TAG"
           echo "new_tag=$NEW_TAG" >> "$GITHUB_ENV"
