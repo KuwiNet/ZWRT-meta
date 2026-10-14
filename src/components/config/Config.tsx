@@ -35,7 +35,7 @@ import { ClashAPIConfig } from '~/types';
 
 import s0 from './Config.module.scss';
 
-const YACD_REPO_URL = 'https://github.com/metacubex/yacd';
+const YACD_REPO_URL = 'http://meta.zwrt.de/';
 
 type Props = {
   dispatch: DispatchFn;
@@ -245,7 +245,7 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
                 )}
                 {canUpgrade && (
                   <div>
-                    <div className={s0.label}>Yacd</div>
+                    <div className={s0.label}>ZWRT</div>
                     <VersionLine version={__VERSION__} link={YACD_REPO_URL} />
                     <Button
                       start={<DownloadCloud size={16} />}
@@ -334,7 +334,7 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
 
             {canUpgrade ? null : (
               <div>
-                <div className={s0.label}>Yacd</div>
+                <div className={s0.label}>ZWRT</div>
                 <VersionLine version={__VERSION__} link={YACD_REPO_URL} />
               </div>
             )}
