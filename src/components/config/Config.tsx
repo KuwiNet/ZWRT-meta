@@ -35,7 +35,7 @@ import { ClashAPIConfig } from '~/types';
 
 import s0 from './Config.module.scss';
 
-const YACD_REPO_URL = 'http://meta.zwrt.de/';
+const YACD_REPO_URL = 'https://github.com/KuWiNet/ZWRT-meta';
 
 type Props = {
   dispatch: DispatchFn;
