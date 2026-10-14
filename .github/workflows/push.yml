@@ -34,7 +34,7 @@ jobs:
             fi
           fi
           VER=$(echo "$NEW_TAG" | sed 's/^v//')
-          echo "new_tag=$NEW_TAG" >> "$GITHUB_ENV"
+          echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
           echo "计算得到新版本 tag: $NEW_TAG, 同步 package.json version=$VER"
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/" package.json
           grep '"version"' package.json
