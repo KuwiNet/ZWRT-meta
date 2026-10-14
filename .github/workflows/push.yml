@@ -65,3 +65,29 @@ jobs:
           files: ./gh-pages.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload gh-pages.zip to Cloudflare R2 (meta/)
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL || 'https://dl.zwrt.de' }}
+        run: |
+          if [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ]; then
+            echo "未配置 R2 密钥, 跳过上传 (请在仓库 Secrets 配置 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET)"
+            exit 0
+          fi
+          ENDPOINT="${R2_ENDPOINT:-https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com}"
+          echo "安装 rclone ..."
+          curl -s https://rclone.org/install.sh | sudo bash >/dev/null 2>&1
+          rclone config create r2 s3 \
+            provider=Cloudflare \
+            access_key_id="$R2_ACCESS_KEY_ID" \
+            secret_access_key="$R2_SECRET_ACCESS_KEY" \
+            endpoint="$ENDPOINT" \
+            --non-interactive
+          rclone copy gh-pages.zip "r2:$R2_BUCKET/meta/" -v
+          echo "==== 上传完成 ===="
+          echo "  ${R2_PUBLIC_URL}/meta/gh-pages.zip"
