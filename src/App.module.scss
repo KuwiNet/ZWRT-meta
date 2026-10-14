@@ -16,5 +16,12 @@
 
 .content {
   flex-grow: 1;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: auto;
+
+  @media (max-width: 768px) {
+    padding-bottom: 0;
+    padding-top: calc(64px + env(safe-area-inset-top));
+  }
 }

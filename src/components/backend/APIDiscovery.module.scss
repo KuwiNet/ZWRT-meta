@@ -1,0 +1,43 @@
+.content.content {
+  background: none;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  // Modal 用独立的 translate 属性做居中，这里必须同样用 translate 抵消。
+  // 注意别在同一条规则里再写 transform：postcss-preset-env 会把两者合并成
+  // transform: translate(0,0)，translate 声明被吞掉，弹层就会偏移半屏。
+  translate: none;
+  padding: 0;
+  border-radius: 0;
+
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.container {
+  position: relative;
+  // 必须撑满：flex item 默认按内容收缩，APIConfig 的 max-width: 100% 就参照不到视口，
+  // 窄屏上内容比视口宽，居中后左侧溢出到滚动不到的地方
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 20px;
+
+  @media screen and (max-width: 30em) {
+    padding: 0 16px;
+  }
+}
+
+.overlay.overlay {
+  background-color: var(--color-background);
+}
+
+.fixed {
+  position: fixed;
+  padding: 16px;
+  bottom: 0;
+  right: 0;
+}

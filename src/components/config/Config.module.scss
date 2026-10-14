@@ -1,0 +1,124 @@
+.root {
+  max-width: 1000px;
+  padding: 30px 20px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  @media (max-width: 768px) {
+    padding: 15px 10px;
+  }
+}
+
+.section {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  align-items: start;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// 同一项下并排的多个按钮（如内核更新的稳定版 / Alpha 版）
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wrapSwitch {
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.label {
+  padding: 10px 0 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sectionTitle {
+  padding: 10px 0;
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-highlight);
+}
+
+// 升级按钮上方的版本号行：版本号 + 源码链接图标
+.versionLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.sourceLink {
+  display: inline-flex;
+  color: var(--color-text-secondary);
+  &:hover {
+    color: var(--color-text-highlight);
+  }
+}
+
+.updateHint {
+  display: inline-flex;
+  margin-bottom: 10px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-text-highlight);
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// 与升级按钮上的更新红点同色同尺寸
+.updateDot {
+  display: block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}
+
+// 与当前内核同通道的升级按钮右上角挂同一个红点，提示点它就能更新
+.withUpdateDot {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-danger);
+  }
+}
+
+// 与代理组 / 连接表格 / 规则列表同一张卡：--color-card 而不是更灰一档的
+// --bg-log-info-card，否则设置页的卡片在浅色下比别处暗一档
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-card-border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-card);
+}

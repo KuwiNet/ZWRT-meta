@@ -7,9 +7,15 @@ type VersionData = {
   meta?: boolean;
 };
 
+/** Raw GET /version, for callers that need the status and error body rather than a fallback. */
+export function requestVersion(apiConfig: ClashAPIConfig, signal?: AbortSignal) {
+  const { url, init } = getURLAndInit(apiConfig);
+  return fetch(url + '/version', { ...init, signal });
+}
+
 export async function fetchVersion(
   endpoint: string,
-  apiConfig: ClashAPIConfig
+  apiConfig: ClashAPIConfig,
 ): Promise<VersionData> {
   let json = {};
   try {
@@ -20,7 +26,7 @@ export async function fetchVersion(
     }
   } catch (err) {
     // log and ignore
-    // eslint-disable-next-line no-console
+
     console.log(`failed to fetch ${endpoint}`, err);
   }
   return json;

@@ -6,6 +6,14 @@ export type StateApp = {
   clashAPIConfigs: ClashAPIConfigWithAddedAt[];
 
   latencyTestUrl: string;
+  latencyTestTimeout: number;
+  // expected HTTP status for the delay test (e.g. '200/204' or '200-299'); '' = don't send
+  latencyTestExpectedStatus: string;
+  // when true, group latency tests use the group's backend-configured testUrl,
+  // falling back to latencyTestUrl; single-proxy/provider tests always use latencyTestUrl
+  preferBackendLatencyTestUrl: boolean;
+  // client-side timeout (ms) for a proxy-provider health check; see PROVIDER_HEALTHCHECK_TIMEOUT
+  providerHealthcheckTimeout: number;
   selectedChartStyleIndex: number;
   theme: string;
 
@@ -14,6 +22,8 @@ export type StateApp = {
   hideUnavailableProxies: boolean;
   autoCloseOldConns: boolean;
   logStreamingPaused: boolean;
+  proxiesLayout: string;
+  proxyGroupByProvider: boolean;
 };
 
 export type ClashTunConfig = {
@@ -41,7 +51,7 @@ export type ClashGeneralConfig = {
 };
 
 export type TunPartial<T> = {
-  [P in keyof T]?: T[P] extends ClashTunConfig ? TunPartial<T[P]> : T[P];
+  [P in keyof T]?: NonNullable<T[P]> extends ClashTunConfig ? TunPartial<NonNullable<T[P]>> : T[P];
 };
 
 ///// store.proxies
@@ -49,11 +59,12 @@ export type TunPartial<T> = {
 type LatencyHistory = Array<{ time: string; delay: number }>;
 type PrimitiveProxyType = 'Shadowsocks' | 'Snell' | 'Socks5' | 'Http' | 'Vmess';
 
+/** 后端要么整个不给（provider 上是可选的），要么四个字段一起给 */
 export type SubscriptionInfo = {
-  Download?: number;
-  Upload?: number;
-  Total?: number;
-  Expire?: number;
+  Download: number;
+  Upload: number;
+  Total: number;
+  Expire: number;
 };
 export type ProxyItem = {
   name: string;
@@ -62,11 +73,24 @@ export type ProxyItem = {
   xudp?: boolean;
   tfo: boolean;
   history: LatencyHistory;
+  providerName?: string;
   all?: string[];
   now?: string;
+  hidden?: boolean;
+  // group-only fields (Selector/URLTest/Fallback/LoadBalance) from GET /proxies
+  // set by URLTest/Fallback groups to the manually-fixed member name; cleared by the
+  // backend via DELETE /proxies/{name} or a latency test at /group/{name}/delay
+  fixed?: string;
+  testUrl?: string;
+  expectedStatus?: string;
+  // extra latency history keyed by test URL — its keys are the URLs the backend tests against
+  extra?: Record<string, { alive?: boolean; history?: LatencyHistory }>;
 };
 export type ProxiesMapping = Record<string, ProxyItem>;
-export type DelayMapping = Record<string, { number?: number }>;
+export type DelayMapping = Record<
+  string,
+  { number?: number; failed?: boolean; testing?: boolean; updatedAt?: number }
+>;
 
 export type ProxyProvider = {
   name: string;
@@ -79,37 +103,6 @@ export type ProxyProvider = {
 
 export type FormattedProxyProvider = Omit<ProxyProvider, 'proxies'> & {
   proxies: string[];
-};
-
-export type SwitchProxyCtxItem = { groupName: string; itemName: string };
-type SwitchProxyCtx = {
-  to: SwitchProxyCtxItem;
-};
-export type StateProxies = {
-  proxies: ProxiesMapping;
-  delay: DelayMapping;
-  groupNames: string[];
-  proxyProviders?: FormattedProxyProvider[];
-  dangleProxyNames?: string[];
-
-  showModalClosePrevConns: boolean;
-  switchProxyCtx?: SwitchProxyCtx;
-};
-
-///// store.logs
-
-export type Log = {
-  time: string;
-  even: boolean;
-  payload: string;
-  type: string;
-  id: string;
-};
-
-export type StateLogs = {
-  searchText: string;
-  logs: Log[];
-  tail: number;
 };
 
 ///// store.configs
@@ -130,16 +123,12 @@ export type StateModals = {
 export type State = {
   app: StateApp;
   configs: StateConfigs;
-  proxies: StateProxies;
-  logs: StateLogs;
   modals: StateModals;
 };
 
 export type GetStateFn = () => State;
 export interface DispatchFn {
   (msg: string, change: (s: State) => void): void;
-  (action: (dispatch: DispatchFn, getState: GetStateFn) => Promise<void>): ReturnType<
-    typeof action
-  >;
-  (action: (dispatch: DispatchFn, getState: GetStateFn) => void): ReturnType<typeof action>;
+  // thunk：原样返回 action 的返回值，异步 thunk 可以把结果交回调用方
+  <T>(action: (dispatch: DispatchFn, getState: GetStateFn) => T): T;
 }

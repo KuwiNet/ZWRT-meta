@@ -9,23 +9,15 @@ jobs:
       contents: write
     steps:
       - name: Checkout Dashboard code
-        uses: actions/checkout@v3
-      
-      - uses: pnpm/action-setup@v2
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: latest
-      
-      - name: Setup Nodejs
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-          cache: pnpm
-      
+          bun-version-file: package.json
       - name: Install package and build
         run: |
-          pnpm install --no-frozen-lockfile
-          pnpm build
-      
+          bun install --frozen-lockfile
+          bun run build
       - name: Deploy
         uses: crazy-max/ghaction-github-pages@v2
         with:

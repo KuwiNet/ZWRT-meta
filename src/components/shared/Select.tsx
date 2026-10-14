@@ -1,16 +1,21 @@
+import cx from 'clsx';
 import * as React from 'react';
 
 import s from './Select.module.scss';
 
 type Props = {
   options: Array<string[]>;
-  selected: string;
+  selected: string | undefined;
 } & React.SelectHTMLAttributes<HTMLSelectElement>;
 
-export default function Select({ options, selected, onChange, ...props }: Props) {
+export default function Select({ options, selected, onChange, className, ...props }: Props) {
   return (
-    // eslint-disable-next-line jsx-a11y/no-onchange
-    <select className={s.select} value={selected} onChange={onChange} {...props}>
+    <select
+      className={cx(s.select, className)}
+      value={selected ?? ''}
+      onChange={onChange}
+      {...props}
+    >
       {options.map(([value, name]) => (
         <option key={value} value={value}>
           {name}

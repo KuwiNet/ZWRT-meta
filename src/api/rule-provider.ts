@@ -42,7 +42,7 @@ export async function fetchRuleProviders(endpoint: string, apiConfig: ClashAPICo
     }
   } catch (err) {
     // log and ignore
-    // eslint-disable-next-line no-console
+
     console.log('failed to GET /providers/rules', err);
   }
   return normalizeAPIResponse(data);
@@ -57,14 +57,14 @@ export async function refreshRuleProviderByName({
 }) {
   const { url, init } = getURLAndInit(apiConfig);
   try {
-    const res = await fetch(url + `/providers/rules/${name}`, {
+    const res = await fetch(url + `/providers/rules/${encodeURIComponent(name)}`, {
       method: 'PUT',
       ...init,
     });
     return res.ok;
   } catch (err) {
     // log and ignore
-    // eslint-disable-next-line no-console
+
     console.log('failed to PUT /providers/rules/:name', err);
     return false;
   }

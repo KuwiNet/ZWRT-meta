@@ -1,37 +1,20 @@
-@import '~/styles/utils/custom-media';
-
-.updatedAt {
-  margin-bottom: 12px;
-  margin-left: 5px;
-  small {
-    color: #777;
-  }
-}
-
-.body {
-  margin: 10px 15px;
-  @media (--breakpoint-not-small) {
-    margin: 10px 40px;
-  }
-  padding: 10px;
-  background-color: var(--color-bg-card);
-  border-radius: 10px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-}
-
-.actionFooter {
+.meta {
   display: flex;
-  button {
-    margin: 0 5px;
-    &:first-child {
-      margin-left: 0;
-    }
-  }
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
 }
 
-.refresh {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
+.qtyBadge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--color-badge-bg);
+  color: var(--color-badge-fg);
 }

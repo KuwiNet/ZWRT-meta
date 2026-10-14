@@ -1,186 +1,197 @@
-import cx from 'clsx';
 import * as React from 'react';
-import { ChevronDown, Zap } from 'react-feather';
-import { useQuery } from 'react-query';
+import { useTranslation } from 'react-i18next';
+import { LuPin, LuPinOff } from 'react-icons/lu';
 
-import * as proxiesAPI from '~/api/proxies';
-import { fetchVersion } from '~/api/version';
+import Collapsible from '~/components/shared/Collapsible';
+import { useVersion } from '~/hooks/useVersion';
 import {
-  getCollapsibleIsOpen,
-  getHideUnavailableProxies,
-  getLatencyTestUrl,
-  getProxySortBy,
-} from '~/store/app';
-import { fetchProxies, getProxies, switchProxy } from '~/store/proxies';
+  useFilterAwareCollapse,
+  useFilteredAndSorted,
+  useFilterSegments,
+  useResumeAutomaticSelection,
+  useSwitchProxy,
+  useTestGroupLatency,
+  useTestProxyLatency,
+} from '~/modules/proxies/hooks';
+import { getProxyLatency, matchesFilter, ProxiesAppConfig } from '~/modules/proxies/utils';
+import { useStoreActions } from '~/store/StateProvider';
+import { DelayMapping, ProxiesMapping, ProxyItem } from '~/store/types';
+import { ClashAPIConfig } from '~/types';
 
-import Button from '../Button';
-import CollapsibleSectionHeader from '../CollapsibleSectionHeader';
-import { connect, useStoreActions } from '../StateProvider';
-import { useFilteredAndSorted } from './hooks';
-import s0 from './ProxyGroup.module.scss';
-import { ProxyList, ProxyListSummaryView } from './ProxyList';
+import { getLatencyColor, ProxyCard, ProxyCardHeader, ProxyCardStatusRow } from './ProxyCard';
+import s0 from './ProxyCard.module.scss';
+import { ProxyList, ProxyListGroupedByProvider, ProxyListSummaryView } from './ProxyList';
 
-const { createElement, useCallback, useMemo, useState, useEffect } = React;
+const { memo, useCallback, useMemo } = React;
 
-function ZapWrapper() {
-  return (
-    <div className={s0.zapWrapper}>
-      <Zap size={16} />
-    </div>
-  );
+function buildNowChain(proxies: ProxiesMapping, groupName: string): string | null {
+  const group = proxies[groupName] as ProxyItem & { now?: string };
+  if (!group?.now) return null;
+
+  const parts: string[] = [group.now];
+  let current = proxies[group.now] as ProxyItem & { now?: string };
+  let depth = 0;
+
+  while (current?.now && depth < 3) {
+    const next = proxies[current.now];
+    if (!next) break;
+    parts.push(current.now);
+    current = next as ProxyItem & { now?: string };
+    depth++;
+  }
+
+  return parts.join(' › ');
 }
 
-function ProxyGroupImpl({
-  name,
-  all: allItems,
-  delay,
-  hideUnavailableProxies,
-  proxySortBy,
-  proxies,
-  type,
-  now,
-  isOpen,
-  latencyTestUrl,
-  apiConfig,
-  dispatch,
-}) {
-  const all = useFilteredAndSorted(allItems, delay, hideUnavailableProxies, proxySortBy, proxies);
+type Props = {
+  name: string;
+  delay: DelayMapping;
+  proxies: ProxiesMapping;
+  isOpen: boolean;
+  httpsLatencyTest: boolean;
+  apiConfig: ClashAPIConfig;
+  appConfig: ProxiesAppConfig;
+};
 
-  const { data: version } = useQuery(['/version', apiConfig], () =>
-    fetchVersion('/version', apiConfig)
+export const ProxyGroup = memo(function ProxyGroup({
+  name,
+  delay,
+  proxies,
+  isOpen,
+  httpsLatencyTest,
+  apiConfig,
+  appConfig,
+}: Props) {
+  const { t } = useTranslation();
+  const group = proxies[name] as ProxyItem & { all?: string[]; now?: string; fixed?: string };
+  const { all: allItems = [], type, now, fixed } = group || {};
+  // 组名本身命中搜索时，整组节点原样展示，不再逐个过滤
+  const filterSegments = useFilterSegments();
+  const nameMatched = matchesFilter(name, filterSegments);
+  const all = useFilteredAndSorted(
+    allItems,
+    delay,
+    appConfig.hideUnavailableProxies,
+    appConfig.proxySortBy,
+    proxies,
+    nameMatched,
   );
+
+  const nowChain = useMemo(() => buildNowChain(proxies, name), [proxies, name]);
+  const nowLatency = useMemo(
+    () => (now ? getProxyLatency(proxies, delay, now) : undefined),
+    [proxies, delay, now],
+  );
+  const nowLatencyColor = getLatencyColor(nowLatency?.number, httpsLatencyTest);
+
+  const version = useVersion(apiConfig);
 
   const isSelectable = useMemo(
     () => ['Selector', version.meta && 'Fallback', version.meta && 'URLTest'].includes(type),
-    [type, version.meta]
+    [type, version.meta],
   );
 
   const {
     app: { updateCollapsibleIsOpen },
-    proxies: { requestDelayForProxies },
   } = useStoreActions();
 
-  const toggle = useCallback(() => {
-    updateCollapsibleIsOpen('proxyGroup', name, !isOpen);
-  }, [isOpen, updateCollapsibleIsOpen, name]);
+  const onToggle = useCallback(
+    (next: boolean) => updateCollapsibleIsOpen('proxyGroup', name, next),
+    [updateCollapsibleIsOpen, name],
+  );
+  const [effectiveIsOpen, toggle] = useFilterAwareCollapse({ isOpen, nameMatched, onToggle });
 
+  const switchProxy = useSwitchProxy(apiConfig, appConfig.autoCloseOldConns);
+  const [resumeAutomaticSelection, isResuming] = useResumeAutomaticSelection(
+    apiConfig,
+    appConfig.autoCloseOldConns,
+  );
+  const canResumeAutomaticSelection =
+    version.meta && !version.premium && Boolean(fixed) && ['URLTest', 'Fallback'].includes(type);
   const itemOnTapCallback = useCallback(
-    (proxyName) => {
-      if (!isSelectable) return;
-      dispatch(switchProxy(apiConfig, name, proxyName));
+    (proxyName: string) => {
+      if (!isSelectable || isResuming) return;
+      switchProxy(name, proxyName);
     },
-    [apiConfig, dispatch, name, isSelectable]
+    [switchProxy, name, isSelectable, isResuming],
   );
-  const [isTestingLatency, setIsTestingLatency] = useState(false);
-  const testLatency = useCallback(async () => {
-    setIsTestingLatency(true);
-    try {
-      if (version.meta === true) {
-        await proxiesAPI.requestDelayForProxyGroup(apiConfig, name, latencyTestUrl);
-        await dispatch(fetchProxies(apiConfig));
-      } else {
-        await requestDelayForProxies(apiConfig, all);
-        await dispatch(fetchProxies(apiConfig));
-      }
-    } catch (err) {}
-    setIsTestingLatency(false);
-  }, [all, apiConfig, dispatch, name, version.meta]);
 
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-  const updateWindowWidth = () => {
-    setWindowWidth(window.innerWidth);
-  };
-
-  useEffect(() => {
-    window.addEventListener('resize', updateWindowWidth);
-    return () => window.removeEventListener('resize', updateWindowWidth);
-  }, []);
-
-  return (
-    <div className={s0.group}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: windowWidth > 768 ? 'start' : 'space-between',
-        }}
-      >
-        <CollapsibleSectionHeader name={name} type={type} toggle={toggle} qty={all.length} />
-        <div style={{ display: 'flex' }}>
-          {windowWidth > 768 ? (
-            <>
-              <Button
-                kind="minimal"
-                onClick={toggle}
-                className={s0.btn}
-                title="Toggle collapsible section"
-              >
-                <span className={cx(s0.arrow, { [s0.isOpen]: isOpen })}>
-                  <ChevronDown size={20} />
-                </span>
-              </Button>
-              <Button
-                title="Test latency"
-                kind="minimal"
-                onClick={testLatency}
-                isLoading={isTestingLatency}
-              >
-                <ZapWrapper />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                title="Test latency"
-                kind="minimal"
-                onClick={testLatency}
-                isLoading={isTestingLatency}
-              >
-                <ZapWrapper />
-              </Button>
-              <Button
-                kind="minimal"
-                onClick={toggle}
-                className={s0.btn}
-                title="Toggle collapsible section"
-              >
-                <span className={cx(s0.arrow, { [s0.isOpen]: isOpen })}>
-                  <ChevronDown size={20} />
-                </span>
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-      {createElement(isOpen ? ProxyList : ProxyListSummaryView, {
-        all,
-        now,
-        isSelectable,
-        itemOnTapCallback,
-      })}
-    </div>
+  const [testGroup, isTestingLatency] = useTestGroupLatency(apiConfig, appConfig);
+  const isResumeBlocked = isResuming || isTestingLatency;
+  const testLatency = useCallback(
+    () => testGroup({ groupName: name, isMeta: version.meta === true, memberNames: all }),
+    [testGroup, name, version.meta, all],
   );
-}
 
-export const ProxyGroup = connect((s, { name, delay }) => {
-  const proxies = getProxies(s);
-  const collapsibleIsOpen = getCollapsibleIsOpen(s);
-  const proxySortBy = getProxySortBy(s);
-  const hideUnavailableProxies = getHideUnavailableProxies(s);
-  const latencyTestUrl = getLatencyTestUrl(s);
+  const onTestLatency = useTestProxyLatency(apiConfig, appConfig);
 
-  const group = proxies[name];
-  const { all, type, now } = group;
-  return {
+  const listProps = {
     all,
     delay,
-    hideUnavailableProxies,
-    proxySortBy,
-    proxies,
-    type,
+    httpsLatencyTest,
     now,
-    isOpen: collapsibleIsOpen[`proxyGroup:${name}`],
-    latencyTestUrl,
+    isSelectable: isSelectable && !isResuming,
+    itemOnTapCallback,
+    onTestLatency,
+    proxies,
   };
-})(ProxyGroupImpl);
+
+  return (
+    <ProxyCard>
+      <ProxyCardHeader
+        name={name}
+        type={type}
+        isOpen={effectiveIsOpen}
+        toggle={toggle}
+        latency={nowLatency?.number}
+        latencyColor={nowLatencyColor}
+        onTest={testLatency}
+        isTesting={isTestingLatency}
+        badges={
+          canResumeAutomaticSelection ? (
+            // The pin sits inside the header's click-to-collapse row, so both click and key
+            // events must stop here. aria-disabled instead of disabled: a click on a disabled
+            // button is not guaranteed to stay off the header across browsers.
+            <button
+              type="button"
+              className={s0.fixedPin}
+              title={t('group_fixed_resume_tip', { name: fixed })}
+              aria-label={t('group_fixed_resume_tip', { name: fixed })}
+              aria-disabled={isResumeBlocked}
+              aria-busy={isResuming}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!isResumeBlocked) resumeAutomaticSelection(name);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <LuPin className={s0.pinIcon} aria-hidden />
+              <LuPinOff className={s0.pinOffIcon} aria-hidden />
+            </button>
+          ) : fixed ? (
+            <span className={s0.fixedBadge} title={t('group_fixed_tip')}>
+              {t('group_fixed')}
+            </span>
+          ) : null
+        }
+      />
+
+      <ProxyCardStatusRow
+        nowName={nowChain}
+        nowColor={nowLatencyColor}
+        itemCount={all.length}
+        allItems={allItems}
+        delay={delay}
+        renderDots={() => <ProxyListSummaryView {...listProps} />}
+      />
+
+      <Collapsible isOpen={effectiveIsOpen}>
+        {appConfig.proxyGroupByProvider ? (
+          <ProxyListGroupedByProvider {...listProps} />
+        ) : (
+          <ProxyList {...listProps} />
+        )}
+      </Collapsible>
+    </ProxyCard>
+  );
+});

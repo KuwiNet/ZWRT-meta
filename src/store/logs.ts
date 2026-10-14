@@ -1,58 +1,41 @@
-import { createSelector } from 'reselect';
+import { atom } from 'jotai';
 
-import { DispatchFn, GetStateFn, Log, State } from '~/store/types';
+import type { Log } from '~/types';
 
 const LogSize = 300;
 
-const getLogs = (s: State) => s.logs.logs;
-const getTail = (s: State) => s.logs.tail;
-export const getSearchText = (s: State) => s.logs.searchText;
-export const getLogsForDisplay = createSelector(
-  getLogs,
-  getTail,
-  getSearchText,
-  (logs, tail, searchText) => {
-    const x = [];
-    for (let i = tail; i >= 0; i--) {
+/** 日志搜索词。过滤在组件里做，见 modules/logs/hooks 的 useFilteredLogs */
+export const logFilterText = atom('');
+
+/**
+ * 环形缓冲区。数组本身就地改、每次只换外层对象，免得每条日志复制一份 300 长的数组；
+ * 靠外层对象的 identity 变化通知 logsForDisplayAtom 重算。
+ */
+const logsBufferAtom = atom<{ logs: Log[]; tail: number }>({ logs: [], tail: -1 });
+
+/** 把环形缓冲区按时间顺序摊平 */
+export const logsForDisplayAtom = atom((get) => {
+  const { logs, tail } = get(logsBufferAtom);
+  const x: Log[] = [];
+  if (logs.length === LogSize) {
+    for (let i = tail + 1; i < LogSize; i++) {
       x.push(logs[i]);
     }
-    if (logs.length === LogSize) {
-      for (let i = LogSize - 1; i > tail; i--) {
-        x.push(logs[i]);
-      }
-    }
-
-    if (searchText === '') return x;
-    return x.filter((r) => r.payload.toLowerCase().indexOf(searchText) >= 0);
   }
-);
+  for (let i = 0; i <= tail; i++) {
+    x.push(logs[i]);
+  }
+  return x;
+});
 
-export function updateSearchText(text: string) {
-  return (dispatch: DispatchFn) => {
-    dispatch('logsUpdateSearchText', (s) => {
-      s.logs.searchText = text.toLowerCase();
-    });
-  };
-}
+export const appendLogAtom = atom(null, (get, set, log: Log) => {
+  const { logs, tail: tailCurr } = get(logsBufferAtom);
+  const tail = tailCurr >= LogSize - 1 ? 0 : tailCurr + 1;
+  // mutate intentionally for performance
+  logs[tail] = log;
+  set(logsBufferAtom, { logs, tail });
+});
 
-export function appendLog(log: Log) {
-  return (dispatch: DispatchFn, getState: GetStateFn) => {
-    const s = getState();
-    const logs = getLogs(s);
-    const tailCurr = getTail(s);
-    const tail = tailCurr >= LogSize - 1 ? 0 : tailCurr + 1;
-    // mutate intentionally for performance
-    logs[tail] = log;
-
-    dispatch('logsAppendLog', (s: State) => {
-      s.logs.tail = tail;
-    });
-  };
-}
-
-export const initialState = {
-  searchText: '',
-  logs: [],
-  // tail's initial value must be -1
-  tail: -1,
-};
+export const clearLogsAtom = atom(null, (_get, set) => {
+  set(logsBufferAtom, { logs: [], tail: -1 });
+});

@@ -1,5 +1,94 @@
 # Changelog
 
+## [0.6.0](https://github.com/MetaCubeX/Yacd-meta/compare/v0.5.0...v0.6.0) (2026-09-30)
+
+
+### Features
+
+* **config:** show versions beside upgrade actions and flag mihomo updates ([853fb8e](https://github.com/MetaCubeX/Yacd-meta/commit/853fb8e3f9ce76082115350f2871af0eef010d33))
+* **proxies:** click the fixed pin to resume automatic selection ([#126](https://github.com/MetaCubeX/Yacd-meta/issues/126)) ([ad560a6](https://github.com/MetaCubeX/Yacd-meta/commit/ad560a6176a12d2080848c43eee6fc247ecfcb71))
+
+## [0.5.0](https://github.com/MetaCubeX/Yacd-meta/compare/v0.4.0...v0.5.0) (2026-09-28)
+
+
+### Features
+
+* `mips` stack ([e2a7bc6](https://github.com/MetaCubeX/Yacd-meta/commit/e2a7bc6c47b3c93bf0ba2de5461b8be0fd4110bb))
+* **app:** link to backend settings from the error fallback page ([0690e57](https://github.com/MetaCubeX/Yacd-meta/commit/0690e576cb1b2bd4a1d5982b04882af91fb61f1c))
+* **backend:** separate connection test from saving a backend ([6a4fe35](https://github.com/MetaCubeX/Yacd-meta/commit/6a4fe35d7ffaa362cd5370d7a341bd06db47f15f))
+
+
+### Bug Fixes
+
+* **backend:** adapt backend config modal to narrow screens ([ddd5065](https://github.com/MetaCubeX/Yacd-meta/commit/ddd50652b53223fcf261225f587723bae64a321c))
+* **proxies:** keep backend config modal usable on 401 or unreachable backend ([1877a55](https://github.com/MetaCubeX/Yacd-meta/commit/1877a55a70bcf1bdb75b60a784766afb0be2ae3d)), closes [#124](https://github.com/MetaCubeX/Yacd-meta/issues/124)
+* **proxies:** stop status row flickering with long current node names ([7fa13ad](https://github.com/MetaCubeX/Yacd-meta/commit/7fa13ad4debdaf1eb56c4ade5c63c6d2fb0edbc3)), closes [#123](https://github.com/MetaCubeX/Yacd-meta/issues/123)
+* urltest后连接未自动断开 ([590bd1c](https://github.com/MetaCubeX/Yacd-meta/commit/590bd1c4600d70cd7b1334d8c3a467da60515f5f))
+
+## [0.4.0](https://github.com/MetaCubeX/Yacd-meta/compare/v0.3.8...v0.4.0) (2026-09-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** update depends
+
+### Features
+
+* add ru translate ([658fb7b](https://github.com/MetaCubeX/Yacd-meta/commit/658fb7b769f5736e95302045660504ae8aace509))
+* add ru translate ([cfbca00](https://github.com/MetaCubeX/Yacd-meta/commit/cfbca00b11e3a55b3186888a899431c59105ea3e))
+* **configs:** add signal support and timeout for fetchConfigs ([a8f8bb1](https://github.com/MetaCubeX/Yacd-meta/commit/a8f8bb1d6b9925425b5b1121de0ea1c0de1645ed))
+* **connections:** optimize closing connections with Promise.allSettled ([dcc5572](https://github.com/MetaCubeX/Yacd-meta/commit/dcc5572e526489480b3c9a0aacc64734969269ab))
+* mod controller api ([abf2f68](https://github.com/MetaCubeX/Yacd-meta/commit/abf2f68ec43f6db2a3aa813f60a73cedda0d4034))
+* oxlint ([affab40](https://github.com/MetaCubeX/Yacd-meta/commit/affab400be7f830de55cf5243383b4c5333f15cb))
+* **proxies:** add fixed selection feature and related translations ([37367ef](https://github.com/MetaCubeX/Yacd-meta/commit/37367efe2a385114adac21f9bb044bc82c8789d5))
+* **proxies:** add latency test URL and timeout configuration ([cc6efa2](https://github.com/MetaCubeX/Yacd-meta/commit/cc6efa25afc9853771565a5f68d1cc24b3a945b2))
+* **proxies:** add latency test URL configuration and expected status handling ([5f99353](https://github.com/MetaCubeX/Yacd-meta/commit/5f9935312b1703561caf1187fa94abed1d046894))
+* **proxies:** add provider health check timeout configuration and related translations ([2b6d587](https://github.com/MetaCubeX/Yacd-meta/commit/2b6d5875421a801ddc79568387b161b2b47424c1))
+* **proxies:** animate display number in ProxyLatency component ([e0f63fc](https://github.com/MetaCubeX/Yacd-meta/commit/e0f63fc4a069a9e94689ab2347981a66a3e422c7))
+* **proxies:** left-align status dots on provider cards ([477a2bc](https://github.com/MetaCubeX/Yacd-meta/commit/477a2bc5c761ef606b4889385071a37c7c02d150))
+* **proxies:** optimize proxy state updates and add deep equality check ([562df68](https://github.com/MetaCubeX/Yacd-meta/commit/562df682377b00dbb6d3bc221d26963151943ea7))
+* proxy group by providers ([120f06c](https://github.com/MetaCubeX/Yacd-meta/commit/120f06c59ef7e1514baa3cdf81dec79c7fa6e1e6))
+* **rules:** support enabling/disabling rules and show hit/entry counts ([30dfb51](https://github.com/MetaCubeX/Yacd-meta/commit/30dfb51a61a6d6083640d411da8c63cb076318ab))
+* **ui:** increase rule column width ([9e6e938](https://github.com/MetaCubeX/Yacd-meta/commit/9e6e9389616cb7d3248a24b8f6d318c4c70fa92f))
+* update core channel ([ef20fd0](https://github.com/MetaCubeX/Yacd-meta/commit/ef20fd088594dd37ceccff3485b482bfef0e57ac))
+
+
+### Bug Fixes
+
+* about ([8f5f586](https://github.com/MetaCubeX/Yacd-meta/commit/8f5f586d8fce31f51aff02f3b240bd865fb4dda9))
+* **connections:** sort traffic columns descending on first click ([ed9054b](https://github.com/MetaCubeX/Yacd-meta/commit/ed9054bba44a2348a91c7ae5197f2d03904a486b))
+* encode rule provider name in refresh request ([a5c75e8](https://github.com/MetaCubeX/Yacd-meta/commit/a5c75e865fc751edfeb0c2c49e70bfc3b2b76503))
+* encode the group name when switching a proxy ([a680bd0](https://github.com/MetaCubeX/Yacd-meta/commit/a680bd0aae625b33d8ea021ad48b7ebe6a811c03))
+* encode the group name when switching a proxy ([6dbd4e5](https://github.com/MetaCubeX/Yacd-meta/commit/6dbd4e53a8f1d2c2e358db6cfe4a6e382178d56e))
+* **logs:** ensure proper cleanup of log fetching on component unmount ([a7a842e](https://github.com/MetaCubeX/Yacd-meta/commit/a7a842ee25a5b7fc5aa0cd20e9a3086d747332bc))
+* **logs:** improve log fetching and add log level selection ([2cf8322](https://github.com/MetaCubeX/Yacd-meta/commit/2cf83223f6d4b551998e8cd8f74fcec5e7ffd8ae))
+* **proxies:** drop the stale delay after a failed latency test ([d988f95](https://github.com/MetaCubeX/Yacd-meta/commit/d988f955d484eb84690279ff71fa8ccb872a4efc))
+* **proxies:** toast latency test failures instead of showing them inline ([50d11cc](https://github.com/MetaCubeX/Yacd-meta/commit/50d11cc2d14a74a38f51e009532f5b8fa085b153))
+* proxy page header in mobile ([f1173a7](https://github.com/MetaCubeX/Yacd-meta/commit/f1173a77f7b20105a9677708c8201450ebef5cce))
+* **router:** redirect root path to /proxies ([c8604a7](https://github.com/MetaCubeX/Yacd-meta/commit/c8604a7f794dcab8d8a7d58c3c4cbd1c4cd32755))
+* **rules:** keep the update button on the header first row ([1aedb6f](https://github.com/MetaCubeX/Yacd-meta/commit/1aedb6f08666210c5e52c42ccfe080b73aac9a06))
+* **sidebar:** remove min-width to fix SVG misalignment on connections ([e8ffc6f](https://github.com/MetaCubeX/Yacd-meta/commit/e8ffc6f606d383ebe9108d6f77b8bf3298d092cc))
+* **sidebar:** remove min-width to fix SVG misalignment on connections page ([0323469](https://github.com/MetaCubeX/Yacd-meta/commit/0323469f85b8331b3324153d325c5046d6843208))
+* **SideBar:** update root path from '/' to '/home' ([57b2b54](https://github.com/MetaCubeX/Yacd-meta/commit/57b2b5491c9c2cfb0f41606120b67cbb42350fa9))
+* **styles:** ensure background color is applied to listWrapper ([1dac860](https://github.com/MetaCubeX/Yacd-meta/commit/1dac8605eccab498e717de00523fc1fec1a14c21))
+* switch api ([e46df66](https://github.com/MetaCubeX/Yacd-meta/commit/e46df665bca1c8be8f8daf4cc80b58e5d1f29d1a))
+* switch failures and roll back the optimistic update ([afd385f](https://github.com/MetaCubeX/Yacd-meta/commit/afd385f4828d1fed7260510815e61b632e4463e3))
+* **ui:** improve log display and placeholder handling in Logs component ([f76224c](https://github.com/MetaCubeX/Yacd-meta/commit/f76224c3131616251b50f12d6697e5f2540416da))
+* **ui:** prevent sidebar shrink / svg compression on connections page ([2940640](https://github.com/MetaCubeX/Yacd-meta/commit/2940640733f4becdd2f41c768957547b7260124b))
+* **ui:** prevent sidebar shrink / svg compression on Connections page ([d5a1ab7](https://github.com/MetaCubeX/Yacd-meta/commit/d5a1ab7b0c1934f85352d5e7c1c18044267b238d))
+* 修复图标对齐的问题 ([53caadd](https://github.com/MetaCubeX/Yacd-meta/commit/53caaddade7b16ec2ca4cc2b4a5959f3fb044009))
+* 修复图标对齐的问题 ([25c34e0](https://github.com/MetaCubeX/Yacd-meta/commit/25c34e00c6036dc3a033b4704cee4b7a29c6cabc))
+
+
+### Performance Improvements
+
+* **connections,proxies:** cache per-tick formatting and cut render overhead ([3d84dd1](https://github.com/MetaCubeX/Yacd-meta/commit/3d84dd1f1703c473ebc5f05966b5067350770c8d))
+
+
+### Build System
+
+* **deps:** update depends ([edf6c5c](https://github.com/MetaCubeX/Yacd-meta/commit/edf6c5cb65cbf103fb1848760595f5c381dac723))
+
 ## [0.3.5](https://github.com/haishanh/yacd/compare/v0.3.4...v0.3.5) (2022-05-14)
 
 Added:

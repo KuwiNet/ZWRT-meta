@@ -7,11 +7,11 @@ const endpoint = '/connections';
 const fetched = false;
 
 interface Subscriber {
-  listner: unknown; // on data received, listener will be called with data
+  listner: ConnectionsListener; // on data received, listener will be called with data
   onClose: () => void; // on stream closed, onClose will be called
 }
 
-const subscribers = [];
+const subscribers: Subscriber[] = [];
 
 // see also https://github.com/Dreamacro/clash/blob/dev/constant/metadata.go#L41
 type UUID = string;
@@ -41,26 +41,26 @@ export type ConnectionItem = {
   rule: string;
   rulePayload?: string;
 };
-type ConnectionsData = {
+export type ConnectionsData = {
   downloadTotal: number;
   uploadTotal: number;
   connections: Array<ConnectionItem>;
 };
+type ConnectionsListener = (data: ConnectionsData) => void;
 
 function appendData(s: string) {
   let o: ConnectionsData;
   try {
     o = JSON.parse(s);
-    o.connections.forEach(conn => {
-      let m = conn.metadata;
+    o.connections?.forEach((conn) => {
+      const m = conn.metadata;
       if (m.process == null) {
         if (m.processPath != null) {
-          m.process = m.processPath.replace(/^.*[/\\](.*)$/, "$1");
+          m.process = m.processPath.replace(/^.*[/\\](.*)$/, '$1');
         }
       }
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.log('JSON.parse error', JSON.parse(s));
   }
   subscribers.forEach((s) => s.listner(o));
@@ -71,8 +71,8 @@ type UnsubscribeFn = () => void;
 let wsState: number;
 export function fetchData(
   apiConfig: ClashAPIConfig,
-  listener: unknown,
-  onClose: () => void
+  listener: ConnectionsListener,
+  onClose: () => void,
 ): UnsubscribeFn | void {
   if (fetched || wsState === 1) {
     if (listener)
@@ -86,12 +86,12 @@ export function fetchData(
   const ws = new WebSocket(url);
   ws.addEventListener('error', () => {
     wsState = 3;
-    subscribers.forEach((s) => s.onClose());
+    subscribers.forEach((s) => s.onClose?.());
     subscribers.length = 0;
   });
   ws.addEventListener('close', () => {
     wsState = 3;
-    subscribers.forEach((s) => s.onClose());
+    subscribers.forEach((s) => s.onClose?.());
     subscribers.length = 0;
   });
   ws.addEventListener('message', (event) => appendData(event.data));

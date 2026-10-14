@@ -8,12 +8,14 @@ const textDecoder = new TextDecoder('utf-8');
 const Size = 150;
 
 const traffic = {
-  labels: Array(Size).fill(0),
-  up: Array(Size),
-  down: Array(Size),
+  labels: Array(Size)
+    .fill(0)
+    .map((_, i) => Date.now() - (Size - i) * 1000),
+  up: Array(Size).fill(null),
+  down: Array(Size).fill(null),
 
   size: Size,
-  subscribers: [],
+  subscribers: [] as Array<(o: { up: number; down: number }) => void>,
   appendData(o: { up: number; down: number }) {
     this.up.shift();
     this.down.shift();
@@ -43,7 +45,7 @@ function parseAndAppend(x: string) {
   traffic.appendData(JSON.parse(x));
 }
 
-function pump(reader: ReadableStreamDefaultReader) {
+function pump(reader: ReadableStreamDefaultReader): Promise<void> {
   return reader.read().then(({ done, value }) => {
     const str = textDecoder.decode(value, { stream: !done });
     decoded += str;
@@ -60,7 +62,6 @@ function pump(reader: ReadableStreamDefaultReader) {
       parseAndAppend(lastSplit);
       decoded = '';
 
-      // eslint-disable-next-line no-console
       console.log('GET /traffic streaming done');
       fetched = false;
       return;
@@ -100,7 +101,7 @@ function fetchDataWithFetch(apiConfig: ClashAPIConfig) {
   const { url, init } = getURLAndInit(apiConfig);
   fetch(url + endpoint, init).then(
     (response) => {
-      if (response.ok) {
+      if (response.ok && response.body) {
         const reader = response.body.getReader();
         pump(reader);
       } else {
@@ -108,10 +109,9 @@ function fetchDataWithFetch(apiConfig: ClashAPIConfig) {
       }
     },
     (err) => {
-      // eslint-disable-next-line no-console
       console.log('fetch /traffic error', err);
       fetched = false;
-    }
+    },
   );
   return traffic;
 }

@@ -1,7 +1,3 @@
-<h1 align="center">
-  <img src="https://user-images.githubusercontent.com/78135608/232244383-5e1389db-ce56-4c83-9627-4f3d1a489c6e.png" alt="yacd">
-</h1>
-
 > Yet Another [Clash](https://github.com/yaling888/clash) [Dashboard](https://github.com/yaling888/clash-dashboard)
 
 ## 用法
@@ -23,14 +19,14 @@
 
 ```sh
 # 安装依赖库
-# 你可以使用 `npm i -g pnpm` 安装 pnpm
-pnpm i
+# 你可以从 https://bun.sh 安装 bun
+bun install
 
  # 启动开发服务器
  # 然后访问 http://127.0.0.1:3000
- pnpm start
+ bun start
 
  # 构建优化资源
  # 准备好部署的资源将在目录 `public` 中
- pnpm build
+ bun run build
 ```
