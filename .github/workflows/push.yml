@@ -90,6 +90,6 @@ jobs:
             secret_access_key="$R2_SECRET_ACCESS_KEY" \
             endpoint="$ENDPOINT" \
             --non-interactive
-          rclone copy gh-pages.zip "r2:$R2_BUCKET/meta/" -v
+          rclone copy gh-pages.zip "r2:$R2_BUCKET/meta/" -v --s3-no-check-bucket
           echo "==== 上传完成 ===="
           echo "  ${R2_PUBLIC_URL}/meta/gh-pages.zip"
