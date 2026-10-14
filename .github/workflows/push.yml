@@ -27,7 +27,7 @@ jobs:
         with:
           target_branch: gh-pages
           build_dir: public
-          fqdn: yacd.kuwi.net
+          fqdn: meta.zwrt.de
           git_config_name: GitHub Actions
           git_config_email: actions@github.com
         env:
