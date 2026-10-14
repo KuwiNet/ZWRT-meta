@@ -2,6 +2,10 @@ name: Deploy
 
 on: [push]
 
+concurrency:
+  group: deploy-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,28 +47,26 @@ jobs:
           zip -r ../gh-pages.zip . -x "*/.git*"
           ls -la ../gh-pages.zip
       
-      - name: Delete existing gh-pages.zip from release
+      - name: Create new Release with gh-pages.zip (auto-increment version)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          release=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/v1.8.8")
-          asset_id=$(echo "$release" | jq -r '.assets[] | select(.name == "gh-pages.zip") | .id')
-          if [ "$asset_id" != "null" ] && [ -n "$asset_id" ]; then
-            echo "Deleting existing gh-pages.zip with asset ID: $asset_id"
-            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id"
+          # 从现有 Releases 取最高 vX.Y.Z 递增 patch, 每次 push 创建新版本
+          LATEST=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 2>/dev/null | awk '{print $1}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            NEW_TAG="v1.0.0"
           else
-            echo "No existing gh-pages.zip found in release"
+            MAJOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f1)
+            MINOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f2)
+            PATCH=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f3)
+            NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload new gh-pages.zip to Release v1.8.8
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.8.8
-          files: ./gh-pages.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "new_tag=$NEW_TAG"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_ENV"
+          gh release create "$NEW_TAG" gh-pages.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$NEW_TAG" \
+            --notes "Yacd-meta (ZWRT) dashboard 构建产物. 下载: https://dl.zwrt.de/meta/gh-pages.zip"
 
       - name: Upload gh-pages.zip to Cloudflare R2 (meta/)
         env:
