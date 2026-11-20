@@ -18,7 +18,7 @@ export function registerAppBootstrap(rootEl: HTMLElement | null) {
   rootEl.addEventListener('touchmove', onTouchMove, false);
   rootEl.addEventListener('touchend', onTouchEnd, false);
 
-  console.log('Checkout the repo: https://github.com/MetaCubeX/yacd');
+  console.log('Checkout the repo: https://github.com/KuWiNet/ZWRT-meta');
 
   console.log('Version:', __VERSION__);
 }

@@ -4,14 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { RowComponentProps, List as VirtualList } from 'react-window';
 
 import { ArrowDown, ArrowUp, ChevronDown, Sliders, X } from '~/components/shared/FeatherIcons';
+import { Skeleton, SkeletonText } from '~/components/shared/Skeleton';
+import { useMediaQuery } from '~/hooks/useMediaQuery';
+import { getDateFnsLocale } from '~/misc/date-locale';
 import prettyBytes from '~/misc/pretty-bytes';
 import { useElementWidth } from '~/modules/connections/hooks';
-import {
-  ConnectionColumn,
-  formatElapsed,
-  getDateFnsLocale,
-  SortState,
-} from '~/modules/connections/utils';
+import { ConnectionColumn, formatElapsed, SortState } from '~/modules/connections/utils';
 import { FormattedConn } from '~/store/connections';
 
 import ConnectionCard from './ConnectionCard';
@@ -272,7 +270,11 @@ function MobileRow({ index, style, rows, onClose, onOpenDetails }: RowComponentP
   );
 }
 
+const SKELETON_ROW_COUNT = 14;
+
 type Props = {
+  /** 还没收到首条消息：列表区画骨架行，不显示空态 */
+  isLoading: boolean;
   data: FormattedConn[];
   totalCount: number;
   columns: ConnectionColumn[];
@@ -284,6 +286,7 @@ type Props = {
 };
 
 export default function ConnectionTable({
+  isLoading,
   data,
   totalCount,
   columns,
@@ -296,17 +299,9 @@ export default function ConnectionTable({
   const { t, i18n } = useTranslation();
   // 只存 id，每次渲染从实时 data 里取最新对象，弹窗里的流量/时长才能实时更新
   const [detailId, setDetailId] = React.useState<string | null>(null);
-  const [isMobile, setIsMobile] = React.useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [containerRef, containerWidth] = useElementWidth<HTMLDivElement>();
   const headRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const mql = window.matchMedia('(max-width: 768px)');
-    setIsMobile(mql.matches);
-    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mql.addEventListener('change', listener);
-    return () => mql.removeEventListener('change', listener);
-  }, []);
 
   const locale = getDateFnsLocale(i18n.language);
 
@@ -438,8 +433,6 @@ export default function ConnectionTable({
                 const sortable = column.sortable !== false;
                 const active = sortable && sort.key === column.id;
                 return (
-                  // role 是条件表达式，oxlint 静态分析不出来
-                  // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
                   <div
                     key={column.id}
                     className={cx(s.headCell, {
@@ -475,7 +468,39 @@ export default function ConnectionTable({
         )}
 
         <div className={s.listWrap}>
-          {empty ? (
+          {isLoading ? (
+            <div className={s.skeletonList} aria-busy>
+              {Array.from({ length: SKELETON_ROW_COUNT }, (_, i) =>
+                isMobile ? (
+                  <Skeleton key={i} className={s.cardSkeleton} />
+                ) : (
+                  <div key={i} className={s.rowWrap} style={{ width: tableWidth }}>
+                    <div
+                      className={s.skeletonRow}
+                      style={{
+                        gridTemplateColumns: gridTemplate,
+                        columnGap: COLUMN_GAP,
+                        paddingLeft: ROW_PADDING_X,
+                        paddingRight: ROW_PADDING_X,
+                      }}
+                    >
+                      {columns.map((column, j) => (
+                        <div
+                          key={column.id}
+                          className={cx(s.cell, { [s.cellRight]: column.align === 'right' })}
+                        >
+                          {column.kind === 'ctrl' ? null : (
+                            // 宽度按行列错开，接近真实数据的长短不一
+                            <SkeletonText width={`${45 + ((i * 7 + j * 13) % 40)}%`} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+          ) : empty ? (
             <div className={s.empty}>
               <span className={s.emptyTitle}>{t('conn_empty_title')}</span>
               <span className={s.emptyHint}>{t('conn_empty_hint')}</span>
@@ -500,7 +525,9 @@ export default function ConnectionTable({
       ) : null}
 
       <div className={s.footer}>
-        <span>{t('conn_shown', { shown: data.length, total: totalCount })}</span>
+        {isLoading ? null : (
+          <span>{t('conn_shown', { shown: data.length, total: totalCount })}</span>
+        )}
         {sortLabel ? (
           <span>
             {t('conn_sorted_by', {
@@ -509,9 +536,7 @@ export default function ConnectionTable({
             })}
           </span>
         ) : null}
-        <span className={s.footerNote}>
-          {isClosed ? t('conn_note_closed') : t('conn_note_active')}
-        </span>
+        {isClosed ? <span className={s.footerNote}>{t('conn_note_closed')}</span> : null}
       </div>
     </div>
   );

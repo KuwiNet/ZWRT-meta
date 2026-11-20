@@ -6,6 +6,7 @@ import * as connAPI from '~/api/connections';
 import {
   closedConnectionsState,
   connectionsState,
+  connectionsReceivedState,
   connectionsTotalState,
   FormattedConn,
   isRefreshPausedState,
@@ -15,10 +16,10 @@ import { ClashAPIConfig } from '~/types';
 
 import {
   ALL_SOURCE_IP,
+  applySourceNames,
   arrayToIdKv,
   buildHideRegExp,
   CONNECTION_COLUMN_MAP,
-  CONNECTION_COLUMNS,
   CONNECTION_COLUMNS_DEFAULT,
   ConnectionSettings,
   filterConns,
@@ -49,11 +50,12 @@ export function useSourceMapState() {
   return { sourceMap, setSourceMap };
 }
 
-export function useConnectionsStream(apiConfig: ClashAPIConfig, sourceMap: SourceMapItem[]) {
+export function useConnectionsStream(apiConfig: ClashAPIConfig) {
   const [conns, setConns] = useAtom(connectionsState);
   const [closedConns, setClosedConns] = useAtom(closedConnectionsState);
   const [isRefreshPaused, setIsRefreshPaused] = useAtom(isRefreshPausedState);
   const [total, setTotal] = useAtom(connectionsTotalState);
+  const [isReceived, setIsReceived] = useAtom(connectionsReceivedState);
   const [reConnectCount, setReConnectCount] = useState(0);
   const prevConnsRef = useRef<FormattedConn[]>(conns);
 
@@ -82,11 +84,12 @@ export function useConnectionsStream(apiConfig: ClashAPIConfig, sourceMap: Sourc
       // spans the whole gap)
       if (isRefreshPaused || document.hidden) return;
 
+      setIsReceived(true);
       const prevConnsKv = arrayToIdKv(prevConnsRef.current);
       const now = Date.now();
       const nextConnections =
         connections?.map((item: ConnectionItem) =>
-          formatConnectionDataItem(item, prevConnsKv, now, sourceMap),
+          formatConnectionDataItem(item, prevConnsKv, now),
         ) ?? [];
 
       const nextIds = new Set<string>();
@@ -111,7 +114,7 @@ export function useConnectionsStream(apiConfig: ClashAPIConfig, sourceMap: Sourc
         setConns(nextConnections);
       }
     },
-    [isRefreshPaused, setClosedConns, setConns, setTotal, sourceMap],
+    [isRefreshPaused, setClosedConns, setConns, setTotal, setIsReceived],
   );
 
   useEffect(() => {
@@ -126,13 +129,15 @@ export function useConnectionsStream(apiConfig: ClashAPIConfig, sourceMap: Sourc
     conns,
     closedConns,
     total,
+    /** 首条消息之前为 true；暂停或页面在后台时消息被跳过，也算没到 */
+    isLoading: !isReceived,
     isRefreshPaused,
     toggleIsRefreshPaused,
     closeAllConnections,
   };
 }
 
-/** 已启用列（有序）与可添加列的增删改查 */
+/** 已启用列（有序）的读写，写入时同步存到 localStorage */
 export function useConnectionColumns() {
   const [columns, setColumnsState] = useState<string[]>(() => getInitialColumns());
 
@@ -151,17 +156,6 @@ export function useConnectionColumns() {
     [columns, setColumns],
   );
 
-  const reorderColumns = useCallback(
-    (fromIndex: number, toIndex: number) => {
-      if (fromIndex === toIndex) return;
-      const next = [...columns];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      setColumns(next);
-    },
-    [columns, setColumns],
-  );
-
   const resetColumns = useCallback(() => setColumns([...CONNECTION_COLUMNS_DEFAULT]), [setColumns]);
 
   const visibleColumns = useMemo(
@@ -169,18 +163,12 @@ export function useConnectionColumns() {
     [columns],
   );
 
-  const availableColumns = useMemo(
-    () => CONNECTION_COLUMNS.filter((column) => !columns.includes(column.id)),
-    [columns],
-  );
-
   return {
     columns,
     visibleColumns,
-    availableColumns,
     addColumn,
     removeColumn,
-    reorderColumns,
+    setColumns,
     resetColumns,
   };
 }
@@ -232,13 +220,19 @@ export function useConnectionFilters({
 
   const hideRegExp = useMemo(() => buildHideRegExp(settings), [settings]);
 
+  const namedConns = useMemo(() => applySourceNames(conns, sourceMap), [conns, sourceMap]);
+  const namedClosedConns = useMemo(
+    () => applySourceNames(closedConns, sourceMap),
+    [closedConns, sourceMap],
+  );
+
   const filteredConns = useMemo(
-    () => filterConns(conns, filterKeyword, filterSourceIpStr, hideRegExp),
-    [conns, filterKeyword, filterSourceIpStr, hideRegExp],
+    () => filterConns(namedConns, filterKeyword, filterSourceIpStr, hideRegExp),
+    [namedConns, filterKeyword, filterSourceIpStr, hideRegExp],
   );
   const filteredClosedConns = useMemo(
-    () => filterConns(closedConns, filterKeyword, filterSourceIpStr, hideRegExp),
-    [closedConns, filterKeyword, filterSourceIpStr, hideRegExp],
+    () => filterConns(namedClosedConns, filterKeyword, filterSourceIpStr, hideRegExp),
+    [namedClosedConns, filterKeyword, filterSourceIpStr, hideRegExp],
   );
 
   const connIpSet = useMemo(() => {

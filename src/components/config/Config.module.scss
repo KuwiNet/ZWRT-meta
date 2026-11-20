@@ -22,6 +22,12 @@
   }
 }
 
+// 横跨整行的设置项，内容太宽放不进单列
+.fullRow {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 // 同一项下并排的多个按钮（如内核更新的稳定版 / Alpha 版）
 .buttonGroup {
   display: flex;
@@ -72,6 +78,13 @@
   &:hover {
     color: var(--color-text-highlight);
   }
+}
+
+// 输入框下方的提示，比如填写的字体本机找不到
+.fieldHint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-warn);
 }
 
 .updateHint {

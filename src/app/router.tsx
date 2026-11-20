@@ -1,5 +1,13 @@
 import { Suspense } from 'react';
-import { HashRouter, Navigate, Route, RouteObject, Routes, useRoutes } from 'react-router-dom';
+import {
+  HashRouter,
+  Navigate,
+  Route,
+  RouteObject,
+  Routes,
+  useLocation,
+  useRoutes,
+} from 'react-router-dom';
 
 import SideBar from '~/app/SideBar';
 import { Head } from '~/components/shared/Head';
@@ -29,11 +37,17 @@ const routes = [
 ].filter(Boolean) as RouteObject[];
 
 function DashboardRouter() {
+  const page = useRoutes(routes);
+  const { pathname } = useLocation();
   return (
     <>
       <APIDiscoveryContainer />
       <SideBar />
-      <div className={styles.content}>{useRoutes(routes)}</div>
+      {/* 页面数据在等后端时只挂起内容区，侧边栏要留着能点，才能切到别的后端。
+          key 跟着路径走：换页时重新挂载，淡入动画重播，滚动位置也回到顶部 */}
+      <div key={pathname} className={styles.content}>
+        <Suspense fallback={<Loading />}>{page}</Suspense>
+      </div>
     </>
   );
 }

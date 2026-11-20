@@ -6,7 +6,7 @@ import SvgYacd from '~/components/shared/SvgYacd';
 
 import s0 from './ErrorBoundaryFallback.module.scss';
 
-const yacdRepoIssueUrl = 'https://github.com/metacubex/yacd';
+const yacdRepoIssueUrl = 'https://github.com/KuWiNet/ZWRT-meta';
 
 type Props = {
   message?: string;
@@ -38,7 +38,7 @@ function ErrorBoundaryFallback({ message, detail }: Props) {
       <p>
         <a className={s0.link} href={yacdRepoIssueUrl}>
           <SvgGithub width={16} height={16} />
-          metacubex/yacd
+          KuWiNet/ZWRT-meta
         </a>
       </p>
     </div>

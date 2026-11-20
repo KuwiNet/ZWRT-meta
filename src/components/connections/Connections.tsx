@@ -39,17 +39,18 @@ export default function Connections({ apiConfig }: Props) {
 
   const { sourceMap, setSourceMap } = useSourceMapState();
   const { settings, updateSettings } = useConnectionSettings();
-  const {
-    visibleColumns,
-    availableColumns,
-    addColumn,
-    removeColumn,
-    reorderColumns,
-    resetColumns,
-  } = useConnectionColumns();
+  const { visibleColumns, addColumn, removeColumn, setColumns, resetColumns } =
+    useConnectionColumns();
 
-  const { conns, closedConns, total, isRefreshPaused, toggleIsRefreshPaused, closeAllConnections } =
-    useConnectionsStream(apiConfig, sourceMap);
+  const {
+    conns,
+    closedConns,
+    total,
+    isLoading,
+    isRefreshPaused,
+    toggleIsRefreshPaused,
+    closeAllConnections,
+  } = useConnectionsStream(apiConfig);
 
   const {
     filterKeyword,
@@ -103,8 +104,8 @@ export default function Connections({ apiConfig }: Props) {
       <ConnectionsHeader
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        activeCount={filteredConns.length}
-        closedCount={filteredClosedConns.length}
+        activeCount={isLoading ? undefined : filteredConns.length}
+        closedCount={isLoading ? undefined : filteredClosedConns.length}
         connIpSet={connIpSet}
         filterSourceIpStr={filterSourceIpStr}
         setFilterSourceIpStr={setFilterSourceIpStr}
@@ -118,10 +119,11 @@ export default function Connections({ apiConfig }: Props) {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      <ConnectionStats {...stats} />
+      <ConnectionStats {...stats} isLoading={isLoading} />
 
       <div className={s.tableArea}>
         <ConnectionTable
+          isLoading={isLoading}
           data={sortedRows}
           totalCount={poolSize}
           columns={visibleColumns}
@@ -150,10 +152,9 @@ export default function Connections({ apiConfig }: Props) {
         settings={settings}
         updateSettings={updateSettings}
         visibleColumns={visibleColumns}
-        availableColumns={availableColumns}
         addColumn={addColumn}
         removeColumn={removeColumn}
-        reorderColumns={reorderColumns}
+        setColumns={setColumns}
         resetColumns={resetColumns}
         sourceMap={sourceMap}
         setSourceMap={setSourceMap}

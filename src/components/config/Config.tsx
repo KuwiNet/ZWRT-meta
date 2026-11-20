@@ -16,13 +16,13 @@ import {
 import Input from '~/components/shared/Input';
 import Select from '~/components/shared/Select';
 import { Selection2 } from '~/components/shared/Selection';
+import { Skeleton, SkeletonText } from '~/components/shared/Skeleton';
 import Switch from '~/components/shared/SwitchThemed';
 import TrafficChartSample from '~/components/shared/TrafficChartSample';
 import { useConfigPage } from '~/modules/config/hooks';
 import {
   CONFIG_CHART_STYLE_PROPS,
-  getBackendContent,
-  getCoreVersionMeta,
+  CORE_META,
   LANGUAGE_OPTIONS,
   LOG_LEVEL_OPTIONS,
   MODE_OPTIONS,
@@ -30,10 +30,12 @@ import {
   TUN_STACK_OPTIONS,
 } from '~/modules/config/utils';
 import { useStoreActions } from '~/store/StateProvider';
-import { ClashGeneralConfig, DispatchFn } from '~/store/types';
+import { ClashGeneralConfig, DispatchFn, TabTitleConfig } from '~/store/types';
 import { ClashAPIConfig } from '~/types';
 
 import s0 from './Config.module.scss';
+import { FontSettings } from './FontSettings';
+import { TabTitleSettings } from './TabTitleSettings';
 
 const YACD_REPO_URL = 'https://github.com/KuWiNet/ZWRT-meta';
 
@@ -42,9 +44,53 @@ type Props = {
   configs: ClashGeneralConfig;
   selectedChartStyleIndex: number;
   apiConfig: ClashAPIConfig;
+  tabTitle: TabTitleConfig;
 };
 
-export default function Config({ dispatch, configs, selectedChartStyleIndex, apiConfig }: Props) {
+/**
+ * configs 在首次拉取前是 store 里的硬编码默认值（端口 7890 之类），
+ * 先拿它渲染表单会闪出一组假数据，所以等 haveFetchedConfig 再换成真表单
+ */
+export default function Config({
+  haveFetchedConfig,
+  ...props
+}: Props & { haveFetchedConfig: boolean }) {
+  if (!haveFetchedConfig) return <ConfigSkeleton />;
+  return (
+    <React.Suspense fallback={<ConfigSkeleton />}>
+      <ConfigContent {...props} />
+    </React.Suspense>
+  );
+}
+
+const SKELETON_FIELD_COUNTS = [6, 4, 6];
+
+function ConfigSkeleton() {
+  return (
+    <div className={s0.root} aria-busy>
+      {SKELETON_FIELD_COUNTS.map((fieldCount, i) => (
+        <div key={i} className={s0.card}>
+          <div className={s0.sectionTitle}>
+            <Skeleton width={20} height={20} radius={5} />
+            <SkeletonText width={96} />
+          </div>
+          <div className={s0.section}>
+            {Array.from({ length: fieldCount }, (_, j) => (
+              <div key={j}>
+                <div className={s0.label}>
+                  <SkeletonText width={j % 2 ? 72 : 104} />
+                </div>
+                <Skeleton height={36} radius={8} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConfigContent({ dispatch, configs, selectedChartStyleIndex, apiConfig, tabTitle }: Props) {
   const { t, i18n } = useTranslation();
 
   const { selectChartStyleIndex, updateAppConfig } = useStoreActions();
@@ -64,9 +110,10 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
     dispatch,
     updateAppConfig,
   });
-  const coreMeta = getCoreVersionMeta(version);
-  // 只有 mihomo 支持在线升级内核和面板；版本号跟着升级按钮走，其它内核的版本号放在当前后端里
-  const canUpgrade = version.meta && !version.premium;
+  const coreMeta = CORE_META[version.core];
+  // sing-box 的 clash API 只是子集：没有端口、TUN、内核/面板/GEO 升级和重启。
+  // 版本号跟着升级按钮走，sing-box 的版本号放在当前后端里
+  const isMihomo = version.core === 'mihomo';
 
   return (
     <div>
@@ -77,7 +124,7 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
             {t('general')}
           </div>
           <div className={s0.section}>
-            {(version.meta && version.premium) ||
+            {isMihomo &&
               PORT_FIELDS.map((f) =>
                 configState[f.key] !== undefined ? (
                   <div key={f.key}>
@@ -118,7 +165,7 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
               />
             </div>
 
-            {(version.meta && version.premium) || (
+            {isMihomo && (
               <div>
                 <div className={s0.label}>{t('allow_lan')}</div>
                 <div className={s0.wrapSwitch}>
@@ -133,7 +180,7 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
               </div>
             )}
 
-            {version.meta && !version.premium && (
+            {isMihomo && (
               <div>
                 <div className={s0.label}>{t('tls_sniffing')}</div>
                 <div className={s0.wrapSwitch}>
@@ -150,160 +197,154 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
           </div>
         </div>
 
-        {version.meta && (
-          <>
-            {version.premium || (
-              <div className={s0.card}>
-                <div className={s0.sectionTitle}>
-                  <Cpu size={20} />
-                  TUN
+        {isMihomo && (
+          <div className={s0.card}>
+            <div className={s0.sectionTitle}>
+              <Cpu size={20} />
+              TUN
+            </div>
+            <div className={s0.section}>
+              <div>
+                <div className={s0.label}>{t('enable_tun_device')}</div>
+                <div className={s0.wrapSwitch}>
+                  <Switch
+                    checked={configState['tun']?.enable}
+                    onChange={(value: boolean) =>
+                      handleInputOnChange({ name: 'enable', value: value })
+                    }
+                  />
                 </div>
-                <div className={s0.section}>
-                  <div>
-                    <div className={s0.label}>{t('enable_tun_device')}</div>
-                    <div className={s0.wrapSwitch}>
-                      <Switch
-                        checked={configState['tun']?.enable}
-                        onChange={(value: boolean) =>
-                          handleInputOnChange({ name: 'enable', value: value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className={s0.label}>TUN IP Stack</div>
-                    <Select
-                      options={TUN_STACK_OPTIONS}
-                      selected={configState.tun?.stack?.toLowerCase()}
-                      onChange={(e) =>
-                        handleInputOnChange({ name: 'stack', value: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <div className={s0.label}>Device Name</div>
-                    <Input
-                      name="device name"
-                      value={configState.tun?.device}
-                      onChange={handleInputOnBlur}
-                    />
-                  </div>
-                  <div>
-                    <div className={s0.label}>Interface Name</div>
-                    <Input
-                      name="interface name"
-                      value={configState['interface-name'] || ''}
-                      onChange={handleInputOnBlur}
-                    />
-                  </div>
+              </div>
+              <div>
+                <div className={s0.label}>TUN IP Stack</div>
+                <Select
+                  options={TUN_STACK_OPTIONS}
+                  selected={configState.tun?.stack?.toLowerCase()}
+                  onChange={(e) => handleInputOnChange({ name: 'stack', value: e.target.value })}
+                />
+              </div>
+              <div>
+                <div className={s0.label}>Device Name</div>
+                <Input
+                  name="device name"
+                  value={configState.tun?.device}
+                  onChange={handleInputOnBlur}
+                />
+              </div>
+              <div>
+                <div className={s0.label}>Interface Name</div>
+                <Input
+                  name="interface name"
+                  value={configState['interface-name'] || ''}
+                  onChange={handleInputOnBlur}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={s0.card}>
+          <div className={s0.sectionTitle}>
+            <Tool size={20} />
+            {t('management')}
+          </div>
+          <div className={s0.section}>
+            {isMihomo && (
+              <div>
+                <div className={s0.label}>{coreMeta.name}</div>
+                {version.version ? (
+                  <VersionLine version={version.version} link={coreMeta.link} />
+                ) : null}
+                {coreUpdate ? (
+                  <a
+                    className={s0.updateHint}
+                    href={coreUpdate.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className={s0.updateDot} />
+                    {t('new_version_available', { version: coreUpdate.version })}
+                  </a>
+                ) : null}
+                <div className={s0.buttonGroup}>
+                  <Button
+                    className={coreUpdate?.channel === 'release' ? s0.withUpdateDot : undefined}
+                    start={<DownloadCloud size={16} />}
+                    label={t('upgrade_core_release')}
+                    isLoading={upgradingChannel === 'release'}
+                    disabled={pendingAction !== null}
+                    onClick={() => runAction('upgrade_core', 'release')}
+                  />
+                  <Button
+                    className={coreUpdate?.channel === 'alpha' ? s0.withUpdateDot : undefined}
+                    start={<DownloadCloud size={16} />}
+                    label={t('upgrade_core_alpha')}
+                    isLoading={upgradingChannel === 'alpha'}
+                    disabled={pendingAction !== null}
+                    onClick={() => runAction('upgrade_core', 'alpha')}
+                  />
                 </div>
               </div>
             )}
-
-            <div className={s0.card}>
-              <div className={s0.sectionTitle}>
-                <Tool size={20} />
-                {t('management')}
+            {isMihomo && (
+              <div>
+                <div className={s0.label}>ZWRT</div>
+                <VersionLine version={__VERSION__} link={YACD_REPO_URL} />
+                <Button
+                  start={<DownloadCloud size={16} />}
+                  label={t('upgrade_ui')}
+                  isLoading={pendingAction === 'upgrade_ui'}
+                  disabled={pendingAction !== null}
+                  onClick={() => runAction('upgrade_ui')}
+                />
               </div>
-              <div className={s0.section}>
-                {canUpgrade && (
-                  <div>
-                    <div className={s0.label}>{coreMeta.name}</div>
-                    {version.version ? (
-                      <VersionLine version={version.version} link={coreMeta.link} />
-                    ) : null}
-                    {coreUpdate ? (
-                      <a
-                        className={s0.updateHint}
-                        href={coreUpdate.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <span className={s0.updateDot} />
-                        {t('new_version_available', { version: coreUpdate.version })}
-                      </a>
-                    ) : null}
-                    <div className={s0.buttonGroup}>
-                      <Button
-                        className={coreUpdate?.channel === 'release' ? s0.withUpdateDot : undefined}
-                        start={<DownloadCloud size={16} />}
-                        label={t('upgrade_core_release')}
-                        isLoading={upgradingChannel === 'release'}
-                        disabled={pendingAction !== null}
-                        onClick={() => runAction('upgrade_core', 'release')}
-                      />
-                      <Button
-                        className={coreUpdate?.channel === 'alpha' ? s0.withUpdateDot : undefined}
-                        start={<DownloadCloud size={16} />}
-                        label={t('upgrade_core_alpha')}
-                        isLoading={upgradingChannel === 'alpha'}
-                        disabled={pendingAction !== null}
-                        onClick={() => runAction('upgrade_core', 'alpha')}
-                      />
-                    </div>
-                  </div>
-                )}
-                {canUpgrade && (
-                  <div>
-                    <div className={s0.label}>ZWRT</div>
-                    <VersionLine version={__VERSION__} link={YACD_REPO_URL} />
-                    <Button
-                      start={<DownloadCloud size={16} />}
-                      label={t('upgrade_ui')}
-                      isLoading={pendingAction === 'upgrade_ui'}
-                      disabled={pendingAction !== null}
-                      onClick={() => runAction('upgrade_ui')}
-                    />
-                  </div>
-                )}
-                <div>
-                  <div className={s0.label}>Reload</div>
-                  <Button
-                    start={<RotateCw size={16} />}
-                    label={t('reload_config_file')}
-                    isLoading={pendingAction === 'reload_config'}
-                    disabled={pendingAction !== null}
-                    onClick={() => runAction('reload_config')}
-                  />
-                </div>
-                {version.meta && !version.premium && (
-                  <div>
-                    <div className={s0.label}>GEO Databases</div>
-                    <Button
-                      start={<DownloadCloud size={16} />}
-                      label={t('upgrade_geo')}
-                      isLoading={pendingAction === 'upgrade_geo'}
-                      disabled={pendingAction !== null}
-                      onClick={() => runAction('upgrade_geo')}
-                    />
-                  </div>
-                )}
-                <div>
-                  <div className={s0.label}>FakeIP</div>
-                  <Button
-                    start={<Trash2 size={16} />}
-                    label={t('flush_fake_ip_pool')}
-                    isLoading={pendingAction === 'flush_fake_ip_pool'}
-                    disabled={pendingAction !== null}
-                    onClick={() => runAction('flush_fake_ip_pool')}
-                  />
-                </div>
-                {version.meta && !version.premium && (
-                  <div>
-                    <div className={s0.label}>Restart</div>
-                    <Button
-                      start={<RotateCw size={16} />}
-                      label={t('restart_core')}
-                      isLoading={pendingAction === 'restart_core'}
-                      disabled={pendingAction !== null}
-                      onClick={() => runAction('restart_core')}
-                    />
-                  </div>
-                )}
-              </div>
+            )}
+            <div>
+              <div className={s0.label}>{t('label_reload')}</div>
+              <Button
+                start={<RotateCw size={16} />}
+                label={t('reload_config_file')}
+                isLoading={pendingAction === 'reload_config'}
+                disabled={pendingAction !== null}
+                onClick={() => runAction('reload_config')}
+              />
             </div>
-          </>
-        )}
+            {isMihomo && (
+              <div>
+                <div className={s0.label}>{t('label_geo_databases')}</div>
+                <Button
+                  start={<DownloadCloud size={16} />}
+                  label={t('upgrade_geo')}
+                  isLoading={pendingAction === 'upgrade_geo'}
+                  disabled={pendingAction !== null}
+                  onClick={() => runAction('upgrade_geo')}
+                />
+              </div>
+            )}
+            <div>
+              <div className={s0.label}>{t('label_fake_ip')}</div>
+              <Button
+                start={<Trash2 size={16} />}
+                label={t('flush_fake_ip_pool')}
+                isLoading={pendingAction === 'flush_fake_ip_pool'}
+                disabled={pendingAction !== null}
+                onClick={() => runAction('flush_fake_ip_pool')}
+              />
+            </div>
+            {isMihomo && (
+              <div>
+                <div className={s0.label}>{t('label_restart')}</div>
+                <Button
+                  start={<RotateCw size={16} />}
+                  label={t('restart_core')}
+                  isLoading={pendingAction === 'restart_core'}
+                  disabled={pendingAction !== null}
+                  onClick={() => runAction('restart_core')}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className={s0.card}>
           <div className={s0.sectionTitle}>
@@ -332,7 +373,9 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
               />
             </div>
 
-            {canUpgrade ? null : (
+            <FontSettings />
+
+            {isMihomo ? null : (
               <div>
                 <div className={s0.label}>ZWRT</div>
                 <VersionLine version={__VERSION__} link={YACD_REPO_URL} />
@@ -342,16 +385,22 @@ export default function Config({ dispatch, configs, selectedChartStyleIndex, api
             <div>
               <div className={s0.label}>
                 {t('current_backend')}
-                <p>{getBackendContent(version) + apiConfig?.baseURL}</p>
+                <p>{`${coreMeta.name} ${apiConfig?.baseURL}`}</p>
               </div>
-              {!canUpgrade && version.version ? (
+              {!isMihomo && version.version ? (
                 <VersionLine version={version.version} link={coreMeta.link} />
               ) : null}
-              <div className={s0.label}>Action</div>
               <Button
                 start={<LogOut size={16} />}
                 label={t('switch_backend')}
                 onClick={openAPIConfigModal}
+              />
+            </div>
+
+            <div className={s0.fullRow}>
+              <TabTitleSettings
+                config={tabTitle}
+                onChange={(next) => updateAppConfig('tabTitle', next)}
               />
             </div>
           </div>
