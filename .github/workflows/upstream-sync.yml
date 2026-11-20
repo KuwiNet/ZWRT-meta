@@ -1,0 +1,154 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 每天 01:00 UTC（北京时间 09:00）检查上游是否有新提交
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "KuWiNet"
+          git config user.email "KuWiNet@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/MetaCubeX/Yacd-meta.git 2>/dev/null || git remote set-url upstream https://github.com/MetaCubeX/Yacd-meta.git
+          git fetch --no-tags upstream master
+
+      - name: Detect new upstream commits
+        id: check
+        run: |
+          BEHIND=$(git rev-list --count HEAD..upstream/master)
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+          echo "上游领先本地 $BEHIND 个提交"
+
+      - name: Merge upstream and keep ZWRT customization
+        if: steps.check.outputs.behind != '0'
+        run: |
+          set -u
+          git merge --no-commit --no-ff upstream/master || true
+          echo "== 冲突文件 =="
+          git diff --name-only --diff-filter=U || true
+
+          # 1) 纯定制资源与静态文件：保留我们的版本
+          KEEP_OURS="index.html CNAME assets/CNAME assets/logo.png assets/yacd.png assets/yacd.ico assets/apple-touch-icon-precomposed.png src/components/shared/SvgYacd.tsx"
+          for f in $KEEP_OURS; do
+            if git ls-files -u -- "$f" | grep -q .; then
+              git checkout --ours -- "$f"; git add -- "$f"; echo "保留(ours): $f"
+            fi
+          done
+
+          # 2) 依赖锁与 package.json：取上游（版本号由 Deploy 在构建前注入）
+          for f in bun.lock package.json; do
+            if git ls-files -u -- "$f" | grep -q .; then
+              git checkout --theirs -- "$f"; git add -- "$f"; echo "取上游(theirs): $f"
+            fi
+          done
+
+          # 3) 结构文件：取上游后植入品牌
+          for f in src/components/config/Config.tsx src/components/shared/Head.tsx src/app/ErrorBoundaryFallback.tsx src/app/bootstrap.ts; do
+            if git ls-files -u -- "$f" | grep -q .; then
+              git checkout --theirs -- "$f"; git add -- "$f"; echo "取上游(theirs): $f"
+            fi
+          done
+
+          if [ -f src/components/config/Config.tsx ]; then
+            sed -i "s#https://github.com/metacubex/yacd#https://github.com/KuWiNet/ZWRT-meta#g" src/components/config/Config.tsx || true
+            sed -i 's#<div className={s0.label}>Yacd</div>#<div className={s0.label}>ZWRT</div>#g' src/components/config/Config.tsx || true
+          fi
+          if [ -f src/app/ErrorBoundaryFallback.tsx ]; then
+            sed -i "s#https://github.com/metacubex/yacd#https://github.com/KuWiNet/ZWRT-meta#g" src/app/ErrorBoundaryFallback.tsx || true
+            sed -i "s#metacubex/yacd#KuWiNet/ZWRT-meta#g" src/app/ErrorBoundaryFallback.tsx || true
+          fi
+          if [ -f src/app/bootstrap.ts ]; then
+            sed -i "s#https://github.com/MetaCubeX/yacd#https://github.com/KuWiNet/ZWRT-meta#g" src/app/bootstrap.ts || true
+          fi
+          git add -A
+
+          # 4) 侧边栏：保留我们的 logo（base64），其余样式取上游
+          if git ls-files -u -- src/app/SideBar.module.scss | grep -q .; then
+            git show HEAD:src/app/SideBar.module.scss > /tmp/sidebar_ours.scss
+            git checkout --theirs -- src/app/SideBar.module.scss
+            python3 - <<'PY'
+import re
+ours = open('/tmp/sidebar_ours.scss', encoding='utf-8').read()
+m = re.search(r"url\('data:image/png;base64,([A-Za-z0-9+/=]+)'\)", ours)
+if m:
+    mine = m.group(1)
+    p = 'src/app/SideBar.module.scss'
+    cur = open(p, encoding='utf-8').read()
+    cur = re.sub(r"url\('data:image/png;base64,[A-Za-z0-9+/=]+'\)",
+                 "url('data:image/png;base64,%s')" % mine, cur)
+    open(p, 'w', encoding='utf-8').write(cur)
+    print('SideBar logo 已替换为自己的 base64')
+else:
+    print('警告: 未在 HEAD 版本中找到 base64 logo，保持上游版本')
+PY
+            git add src/app/SideBar.module.scss
+          fi
+
+          # 5) 其余冲突：保守保留我们的版本
+          for f in $(git diff --name-only --diff-filter=U); do
+            git checkout --ours -- "$f"; git add -- "$f"; echo "保守保留(ours): $f"
+          done
+
+          # 6) 安全检查：无残留冲突与冲突标记
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "::error::仍有未解决冲突" ; exit 1
+          fi
+          if grep -rInE '^(<<<<<<<|>>>>>>>)' --include='*.ts' --include='*.tsx' --include='*.scss' --include='*.json' --include='*.yml' . ; then
+            echo "::error::发现残留冲突标记" ; exit 1
+          fi
+
+      - name: Setup Bun
+        if: steps.check.outputs.behind != '0'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install and build
+        if: steps.check.outputs.behind != '0'
+        run: |
+          bun install || bun install --frozen-lockfile
+          bun run build
+          bunx tsc --noEmit
+
+      - name: Commit and push
+        if: steps.check.outputs.behind != '0'
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "合并后无内容变更"
+          else
+            git commit -m "Auto-merge upstream $(git rev-parse --short upstream/master)"
+            git push origin HEAD:master
+          fi
+
+      - name: Trigger Deploy (new Release + R2)
+        if: steps.check.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sleep 8
+          gh workflow run push.yml --ref master || \
+          ( sleep 15 && gh workflow run push.yml --ref master )
+          echo "已触发 Deploy：将自动创建新版本 Release 并上传 R2"
