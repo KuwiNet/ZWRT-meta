@@ -15,7 +15,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout Dashboard code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Compute next version and sync package.json
         env:
@@ -63,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: gh-pages-content
